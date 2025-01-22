@@ -42,79 +42,12 @@
                     <option value="suite">Suite</option>
                 </select>
             </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Currency</label>
-                <select name="currency" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                    <option value="USD">USD</option>
-                    <option value="EUR">EUR</option>
-                    <option value="GBP">GBP</option>
-                </select>
-            </div>
             <div class="md:col-span-3">
                 <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
                     Search Hotels
                 </button>
             </div>
         </form>
-    </div>
-
-    <!-- City Rates Table -->
-    <div class="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
-        <h2 class="text-2xl font-bold mb-4">City Rates and Availability</h2>
-        <div class="inline-block min-w-full">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            City
-                        </th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Capacity (Rooms)
-                        </th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Peak Season Rate (£)
-                        </th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Off-peak Rate (£)
-                        </th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Current Rate (£)
-                        </th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    {% for city in cities %}
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {{ city.name }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {{ city.capacity }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {{ city.peak_rate }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {{ city.off_peak_rate }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            {% if is_peak_season %}
-                            <span class="text-red-600">£{{ city.peak_rate }}</span>
-                            <span class="text-xs text-gray-500">(Peak)</span>
-                            {% else %}
-                            <span class="text-green-600">£{{ city.off_peak_rate }}</span>
-                            <span class="text-xs text-gray-500">(Off-peak)</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        <div class="mt-4 text-sm text-gray-600">
-            <p><strong>Peak Season:</strong> April–August, November-December</p>
-            <p><strong>Off-peak Season:</strong> All other months</p>
-        </div>
     </div>
 
     <!-- Hotel Listings -->
@@ -171,7 +104,17 @@
                     <div class="mb-4 sm:mb-0">
                         <p class="text-gray-500">Starting from</p>
                         <p class="text-2xl font-bold text-gray-900">
-                            £{{ "%.2f"|format(hotel.rooms[0].price if hotel.rooms else 0) }}
+                            {% if hotel.filtered_rooms is defined %}
+                                {% set rooms = hotel.filtered_rooms %}
+                            {% else %}
+                                {% set rooms = hotel.rooms %}
+                            {% endif %}
+                            {% if hotel.city in CITY_DATA %}
+                                {% set current_rate = CITY_DATA[hotel.city]['peak_rate'] if is_peak_season else CITY_DATA[hotel.city]['off_peak_rate'] %}
+                            {% else %}
+                                {% set current_rate = rooms[0].price if rooms else 0 %}
+                            {% endif %}
+                            £{{ "%.2f"|format(current_rate) }}
                             <span class="text-sm text-gray-500 font-normal">per night</span>
                         </p>
                     </div>

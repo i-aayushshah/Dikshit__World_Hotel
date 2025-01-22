@@ -91,6 +91,73 @@ def load_user(user_id):
 # Routes
 @app.route('/')
 def index():
+    # Get search parameters
+    city = request.args.get('city')
+    check_in = request.args.get('check_in')
+    check_out = request.args.get('check_out')
+    rooms = request.args.get('rooms', type=int)
+    room_type = request.args.get('room_type')
+
+    # Base query
+    hotels_query = Hotel.query
+
+    # Apply filters
+    if city:
+        hotels_query = hotels_query.filter(Hotel.city == city)
+
+    # Get all hotels that match the city filter
+    hotels = hotels_query.all()
+
+    # Further filter hotels based on room criteria
+    if any([rooms, room_type]):
+        filtered_hotels = []
+        for hotel in hotels:
+            available_rooms = []
+            for room in hotel.rooms:
+                # Check if room matches type criteria
+                type_match = True
+                if room_type and room_type != 'any':
+                    type_match = room_type.lower() in room.type.lower()
+
+                # Check if room matches capacity criteria
+                capacity_match = True
+                if rooms:
+                    capacity_match = room.capacity >= rooms
+
+                # Check if room is available for the selected dates
+                date_match = True
+                if check_in and check_out:
+                    try:
+                        check_in_date = datetime.strptime(check_in, '%Y-%m-%d')
+                        check_out_date = datetime.strptime(check_out, '%Y-%m-%d')
+
+                        # Check if room is not booked for these dates
+                        existing_booking = Booking.query.filter(
+                            Booking.room_id == room.id,
+                            Booking.status == 'confirmed',
+                            ~(
+                                (Booking.check_out <= check_in_date) |
+                                (Booking.check_in >= check_out_date)
+                            )
+                        ).first()
+
+                        date_match = not existing_booking
+                    except ValueError:
+                        date_match = True
+
+                if type_match and capacity_match and date_match:
+                    available_rooms.append(room)
+
+            if available_rooms:
+                setattr(hotel, 'filtered_rooms', available_rooms)
+                filtered_hotels.append(hotel)
+
+        hotels = filtered_hotels
+    else:
+        # If no filters applied, set filtered_rooms to all rooms
+        for hotel in hotels:
+            setattr(hotel, 'filtered_rooms', hotel.rooms)
+
     # Get current month to determine if it's peak season
     current_month = datetime.now().month
     is_peak_season = current_month in [4, 5, 6, 7, 8, 11, 12]
@@ -101,7 +168,8 @@ def index():
     return render_template('index.html',
                          cities=cities,
                          is_peak_season=is_peak_season,
-                         hotels=Hotel.query.all())
+                         hotels=hotels,
+                         CITY_DATA=CITY_DATA)
 
 @app.route('/hotel/<int:hotel_id>')
 def hotel_details(hotel_id):
@@ -110,7 +178,8 @@ def hotel_details(hotel_id):
     is_peak_season = current_month in [4, 5, 6, 7, 8, 11, 12]
     return render_template('hotel_details.html',
                          hotel=hotel,
-                         is_peak_season=is_peak_season)
+                         is_peak_season=is_peak_season,
+                         CITY_DATA=CITY_DATA)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -584,6 +653,150 @@ def init_example_data():
                 {'type': 'Standard Business Room', 'price': 150, 'capacity': 1},
                 {'type': 'Executive Room', 'price': 220, 'capacity': 2},
                 {'type': 'Business Suite', 'price': 320, 'capacity': 2},
+            ]
+        },
+        {
+            'name': 'Aberdeen Harbour Hotel',
+            'city': 'Aberdeen',
+            'address': '123 Union Street, Aberdeen, UK',
+            'description': 'Modern hotel overlooking Aberdeen harbour with stunning sea views. Features a seafood restaurant and maritime-themed decor.',
+            'image_url': 'https://images.unsplash.com/photo-1582719508461-905c673771fd?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80',
+            'rooms': [
+                {'type': 'Standard Room', 'price': 140, 'capacity': 2},
+                {'type': 'Deluxe Room', 'price': 182, 'capacity': 2},
+                {'type': 'Sea View Suite', 'price': 210, 'capacity': 3},
+            ]
+        },
+        {
+            'name': 'Belfast City Hotel',
+            'city': 'Belfast',
+            'address': '45 Victoria Street, Belfast, UK',
+            'description': 'Contemporary hotel in the heart of Belfast, close to major attractions and shopping districts.',
+            'image_url': 'https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80',
+            'rooms': [
+                {'type': 'Standard Room', 'price': 130, 'capacity': 2},
+                {'type': 'Deluxe Double', 'price': 169, 'capacity': 2},
+                {'type': 'Family Suite', 'price': 195, 'capacity': 4},
+            ]
+        },
+        {
+            'name': 'Bristol Harbourside Hotel',
+            'city': 'Bristol',
+            'address': '78 Welsh Back, Bristol, UK',
+            'description': 'Waterfront hotel with views of Bristol Harbour. Contemporary design with a focus on sustainability.',
+            'image_url': 'https://images.unsplash.com/photo-1582719508461-905c673771fd?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80',
+            'rooms': [
+                {'type': 'Standard Room', 'price': 140, 'capacity': 2},
+                {'type': 'Harbour View Room', 'price': 182, 'capacity': 2},
+                {'type': 'Executive Suite', 'price': 210, 'capacity': 3},
+            ]
+        },
+        {
+            'name': 'Cardiff Bay Hotel',
+            'city': 'Cardiff',
+            'address': '234 Cardiff Bay, Cardiff, UK',
+            'description': 'Modern hotel in Cardiff Bay with views of the waterfront and easy access to the Wales Millennium Centre.',
+            'image_url': 'https://images.unsplash.com/photo-1564501049412-61c2a3083791?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80',
+            'rooms': [
+                {'type': 'Standard Room', 'price': 130, 'capacity': 2},
+                {'type': 'Bay View Room', 'price': 169, 'capacity': 2},
+                {'type': 'Premium Suite', 'price': 195, 'capacity': 3},
+            ]
+        },
+        {
+            'name': 'Newcastle Central Hotel',
+            'city': 'New Castle',
+            'address': '56 Grey Street, Newcastle, UK',
+            'description': 'Historic hotel in a Georgian building, located in the heart of Newcastle\'s cultural quarter.',
+            'image_url': 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80',
+            'rooms': [
+                {'type': 'Standard Room', 'price': 120, 'capacity': 2},
+                {'type': 'Deluxe Room', 'price': 156, 'capacity': 2},
+                {'type': 'Georgian Suite', 'price': 180, 'capacity': 4},
+            ]
+        },
+        {
+            'name': 'Norwich Cathedral Hotel',
+            'city': 'Norwich',
+            'address': '89 Cathedral Close, Norwich, UK',
+            'description': 'Boutique hotel with views of Norwich Cathedral, combining medieval charm with modern comfort.',
+            'image_url': 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80',
+            'rooms': [
+                {'type': 'Standard Room', 'price': 130, 'capacity': 2},
+                {'type': 'Cathedral View Room', 'price': 169, 'capacity': 2},
+                {'type': 'Heritage Suite', 'price': 195, 'capacity': 3},
+            ]
+        },
+        {
+            'name': 'Nottingham Castle Hotel',
+            'city': 'Nottingham',
+            'address': '12 Castle Road, Nottingham, UK',
+            'description': 'Elegant hotel near Nottingham Castle, featuring a rooftop restaurant with panoramic city views.',
+            'image_url': 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80',
+            'rooms': [
+                {'type': 'Standard Room', 'price': 130, 'capacity': 2},
+                {'type': 'Castle View Room', 'price': 169, 'capacity': 2},
+                {'type': 'Royal Suite', 'price': 195, 'capacity': 4},
+            ]
+        },
+        {
+            'name': 'Oxford Spires Hotel',
+            'city': 'Oxford',
+            'address': '45 High Street, Oxford, UK',
+            'description': 'Classic hotel in the heart of Oxford, surrounded by historic colleges and architectural beauty.',
+            'image_url': 'https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80',
+            'rooms': [
+                {'type': 'Standard Room', 'price': 180, 'capacity': 2},
+                {'type': 'College View Room', 'price': 234, 'capacity': 2},
+                {'type': 'Presidential Suite', 'price': 270, 'capacity': 3},
+            ]
+        },
+        {
+            'name': 'Plymouth Hoe Hotel',
+            'city': 'Plymouth',
+            'address': '78 Hoe Road, Plymouth, UK',
+            'description': 'Seafront hotel with spectacular views of Plymouth Sound and the famous Hoe promenade.',
+            'image_url': 'https://images.unsplash.com/photo-1582719508461-905c673771fd?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80',
+            'rooms': [
+                {'type': 'Standard Room', 'price': 180, 'capacity': 2},
+                {'type': 'Sea View Room', 'price': 234, 'capacity': 2},
+                {'type': 'Lighthouse Suite', 'price': 270, 'capacity': 4},
+            ]
+        },
+        {
+            'name': 'Swansea Marina Hotel',
+            'city': 'Swansea',
+            'address': '234 Marina, Swansea, UK',
+            'description': 'Modern hotel overlooking Swansea Marina, perfect for both business and leisure travelers.',
+            'image_url': 'https://images.unsplash.com/photo-1564501049412-61c2a3083791?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80',
+            'rooms': [
+                {'type': 'Standard Room', 'price': 130, 'capacity': 2},
+                {'type': 'Marina View Room', 'price': 169, 'capacity': 2},
+                {'type': 'Executive Suite', 'price': 195, 'capacity': 3},
+            ]
+        },
+        {
+            'name': 'Bournemouth Beach Hotel',
+            'city': 'Bournemouth',
+            'address': '56 West Cliff, Bournemouth, UK',
+            'description': 'Beachfront hotel with direct access to Bournemouth\'s golden sandy beach and historic pier.',
+            'image_url': 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80',
+            'rooms': [
+                {'type': 'Standard Room', 'price': 130, 'capacity': 2},
+                {'type': 'Sea View Room', 'price': 169, 'capacity': 2},
+                {'type': 'Beach Suite', 'price': 195, 'capacity': 4},
+            ]
+        },
+        {
+            'name': 'Kent Country House Hotel',
+            'city': 'Kent',
+            'address': '123 Garden Way, Canterbury, Kent, UK',
+            'description': 'Historic country house hotel set in beautiful Kent countryside with extensive gardens and spa facilities.',
+            'image_url': 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80',
+            'rooms': [
+                {'type': 'Standard Room', 'price': 140, 'capacity': 2},
+                {'type': 'Garden View Room', 'price': 182, 'capacity': 2},
+                {'type': 'Country Suite', 'price': 210, 'capacity': 3},
             ]
         }
     ]
