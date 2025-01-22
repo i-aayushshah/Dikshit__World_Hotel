@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Booking Confirmation{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <!-- Success Message -->
+    <div class="bg-green-50 border-l-4 border-green-400 p-4 mb-8">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                </svg>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm font-medium text-green-800">
+                    Booking Confirmed
+                </h3>
+                <p class="text-sm text-green-700 mt-1">
+                    Your booking has been successfully confirmed. Booking ID: #{{ booking.id }}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Booking Details Card -->
+    <div class="bg-white shadow-md rounded-lg overflow-hidden">
+        <div class="px-4 py-5 sm:px-6 border-b">
+            <h3 class="text-lg font-medium text-gray-900">Booking Details</h3>
+        </div>
+
+        <div class="px-4 py-5 sm:p-6">
+            <!-- Hotel Info -->
+            <div class="mb-6">
+                <h4 class="text-xl font-bold text-gray-900">{{ booking.hotel.name }}</h4>
+                <p class="text-gray-600">{{ booking.hotel.address }}, {{ booking.hotel.city }}</p>
+            </div>
+
+            <!-- Booking Info Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h5 class="text-sm font-medium text-gray-500">Check-in</h5>
+                    <p class="mt-1 text-gray-900">{{ booking.check_in.strftime('%B %d, %Y') }}</p>
+                    <p class="text-sm text-gray-600">After 3:00 PM</p>
+                </div>
+
+                <div>
+                    <h5 class="text-sm font-medium text-gray-500">Check-out</h5>
+                    <p class="mt-1 text-gray-900">{{ booking.check_out.strftime('%B %d, %Y') }}</p>
+                    <p class="text-sm text-gray-600">Before 11:00 AM</p>
+                </div>
+
+                <div>
+                    <h5 class="text-sm font-medium text-gray-500">Room Type</h5>
+                    <p class="mt-1 text-gray-900">{{ booking.room.type }}</p>
+                </div>
+
+                <div>
+                    <h5 class="text-sm font-medium text-gray-500">Guests</h5>
+                    <p class="mt-1 text-gray-900">{{ booking.guests }} {% if booking.guests == 1 %}Guest{% else %}Guests{% endif %}</p>
+                </div>
+            </div>
+
+            <!-- Price Breakdown -->
+            <div class="mt-8 border-t pt-6">
+                <h4 class="text-lg font-medium text-gray-900 mb-4">Price Details</h4>
+                <div class="space-y-3">
+                    <div class="flex justify-between text-gray-600">
+                        <span>Room Rate (per night)</span>
+                        <span>${{ "%.2f"|format(booking.room.price) }}</span>
+                    </div>
+                    <div class="flex justify-between text-gray-600">
+                        <span>Number of Nights</span>
+                        <span>{{ (booking.check_out - booking.check_in).days }}</span>
+                    </div>
+                    <div class="flex justify-between text-gray-600">
+                        <span>Subtotal</span>
+                        <span>${{ "%.2f"|format(booking.room.price * (booking.check_out - booking.check_in).days) }}</span>
+                    </div>
+                    <div class="flex justify-between text-gray-600">
+                        <span>Taxes & Fees (10%)</span>
+                        <span>${{ "%.2f"|format(booking.total_price - (booking.room.price * (booking.check_out - booking.check_in).days)) }}</span>
+                    </div>
+                    <div class="flex justify-between text-lg font-bold border-t pt-3">
+                        <span>Total</span>
+                        <span>${{ "%.2f"|format(booking.total_price) }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="px-4 py-4 sm:px-6 bg-gray-50 flex justify-between items-center">
+            <a href="{{ url_for('profile') }}" class="text-blue-600 hover:text-blue-800 font-medium">
+                View All Bookings
+            </a>
+            <div class="space-x-3">
+                <button onclick="window.print()" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <svg class="h-5 w-5 mr-2 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clip-rule="evenodd" />
+                    </svg>
+                    Print Receipt
+                </button>
+                <a href="#" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <svg class="h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                    Download PDF
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Add print-specific styles when printing
+    window.onbeforeprint = function() {
+        document.body.classList.add('print-mode');
+    };
+    window.onafterprint = function() {
+        document.body.classList.remove('print-mode');
+    };
+</script>
+{% endblock %}

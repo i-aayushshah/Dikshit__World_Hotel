@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}Search Results{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <!-- Search Summary -->
+    <div class="bg-white shadow-md rounded-lg p-4 mb-6">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">Search Results</h1>
+                <p class="text-gray-600 mt-1">
+                    {% if hotels|length == 0 %}
+                        No hotels found
+                    {% elif hotels|length == 1 %}
+                        1 hotel found
+                    {% else %}
+                        {{ hotels|length }} hotels found
+                    {% endif %}
+                    {% if search.city %}in {{ search.city }}{% endif %}
+                </p>
+            </div>
+            <button type="button"
+                    onclick="document.getElementById('filterPanel').classList.toggle('hidden')"
+                    class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                <svg class="h-5 w-5 mr-2 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd" />
+                </svg>
+                Filters
+            </button>
+        </div>
+    </div>
+
+    <div class="lg:grid lg:grid-cols-12 lg:gap-8">
+        <!-- Filter Panel -->
+        <div id="filterPanel" class="lg:col-span-3 mb-6 lg:mb-0 hidden lg:block">
+            <div class="bg-white shadow-md rounded-lg p-4 sticky top-4">
+                <h2 class="text-lg font-medium text-gray-900 mb-4">Filter Results</h2>
+                <form method="GET" action="{{ url_for('search') }}" class="space-y-4">
+                    <!-- Price Range -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Price Range</label>
+                        <div class="mt-2 space-y-2">
+                            <div class="flex items-center">
+                                <input type="number" name="min_price" value="{{ search.min_price }}" placeholder="Min"
+                                       class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                                <span class="mx-2 text-gray-500">-</span>
+                                <input type="number" name="max_price" value="{{ search.max_price }}" placeholder="Max"
+                                       class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Room Types -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Room Type</label>
+                        <div class="mt-2 space-y-2">
+                            {% for type in room_types %}
+                            <div class="flex items-center">
+                                <input type="checkbox" name="room_types[]" value="{{ type }}"
+                                       {% if type in search.room_types %}checked{% endif %}
+                                       class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                <label class="ml-2 text-sm text-gray-700">{{ type }}</label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Amenities -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Amenities</label>
+                        <div class="mt-2 space-y-2">
+                            {% for amenity in amenities %}
+                            <div class="flex items-center">
+                                <input type="checkbox" name="amenities[]" value="{{ amenity }}"
+                                       {% if amenity in search.amenities %}checked{% endif %}
+                                       class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                <label class="ml-2 text-sm text-gray-700">{{ amenity }}</label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Sort By -->
+                    <div>
+                        <label for="sort" class="block text-sm font-medium text-gray-700">Sort By</label>
+                        <select id="sort" name="sort"
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                            <option value="price_asc" {% if search.sort == 'price_asc' %}selected{% endif %}>Price: Low to High</option>
+                            <option value="price_desc" {% if search.sort == 'price_desc' %}selected{% endif %}>Price: High to Low</option>
+                            <option value="rating_desc" {% if search.sort == 'rating_desc' %}selected{% endif %}>Rating</option>
+                        </select>
+                    </div>
+
+                    <div class="pt-4">
+                        <button type="submit"
+                                class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                            Apply Filters
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Results Grid -->
+        <div class="lg:col-span-9">
+            {% if hotels %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for hotel in hotels %}
+                <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                    <img src="{{ hotel.image_url }}" alt="{{ hotel.name }}" class="w-full h-48 object-cover">
+                    <div class="p-4">
+                        <h3 class="text-xl font-bold text-gray-900">{{ hotel.name }}</h3>
+                        <p class="text-gray-600">{{ hotel.city }}</p>
+                        <div class="mt-2 flex items-center">
+                            {% for room in hotel.rooms %}
+                                {% if loop.first %}
+                                <span class="text-lg font-bold text-gray-900">From ${{ "%.2f"|format(room.price) }}</span>
+                                <span class="text-gray-500 text-sm ml-1">per night</span>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        <div class="mt-4">
+                            <a href="{{ url_for('hotel_details', hotel_id=hotel.id) }}"
+                               class="inline-block bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">
+                                View Details
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="bg-white rounded-lg shadow-md p-6 text-center">
+                <h3 class="text-xl font-medium text-gray-900">No Hotels Found</h3>
+                <p class="text-gray-600 mt-2">Try adjusting your search criteria</p>
+                <a href="{{ url_for('index') }}" class="inline-block mt-4 text-blue-600 hover:text-blue-800">
+                    Return to Home
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Handle mobile filter panel toggle
+    document.addEventListener('DOMContentLoaded', function() {
+        const mediaQuery = window.matchMedia('(min-width: 1024px)');
+        const filterPanel = document.getElementById('filterPanel');
+
+        function handleScreenChange(e) {
+            if (e.matches) {
+                filterPanel.classList.remove('hidden');
+            }
+        }
+
+        mediaQuery.addListener(handleScreenChange);
+        handleScreenChange(mediaQuery);
+    });
+</script>
+{% endblock %}

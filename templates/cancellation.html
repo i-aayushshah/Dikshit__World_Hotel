@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Cancel Booking{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <div class="bg-white shadow-md rounded-lg overflow-hidden">
+        <!-- Header -->
+        <div class="px-4 py-5 sm:px-6 bg-red-50 border-b border-red-100">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">Cancel Booking</h3>
+            <p class="mt-1 text-sm text-gray-500">Please review your booking details before cancellation</p>
+        </div>
+
+        <!-- Booking Details -->
+        <div class="px-4 py-5 sm:p-6">
+            <div class="space-y-6">
+                <div>
+                    <h4 class="text-xl font-bold text-gray-900">{{ booking.hotel.name }}</h4>
+                    <p class="text-gray-600">{{ booking.hotel.address }}</p>
+                </div>
+
+                <div class="border-t border-gray-200 pt-4">
+                    <dl class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Check-in</dt>
+                            <dd class="mt-1 text-sm text-gray-900">{{ booking.check_in.strftime('%B %d, %Y') }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Check-out</dt>
+                            <dd class="mt-1 text-sm text-gray-900">{{ booking.check_out.strftime('%B %d, %Y') }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Room Type</dt>
+                            <dd class="mt-1 text-sm text-gray-900">{{ booking.room.type }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Guests</dt>
+                            <dd class="mt-1 text-sm text-gray-900">{{ booking.guests }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Total Price</dt>
+                            <dd class="mt-1 text-sm text-gray-900">£{{ "%.2f"|format(booking.total_price) }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Booking Status</dt>
+                            <dd class="mt-1">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    {{ booking.status.title() }}
+                                </span>
+                            </dd>
+                        </div>
+                    </dl>
+                </div>
+
+                <!-- Cancellation Warning -->
+                <div class="rounded-md bg-red-50 p-4 mt-6">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-exclamation-triangle text-red-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-red-800">Important Information</h3>
+                            <div class="mt-2 text-sm text-red-700">
+                                <ul class="list-disc pl-5 space-y-1">
+                                    <li>This action cannot be undone</li>
+                                    <li>Cancellation fees may apply based on hotel policy</li>
+                                    <li>Refund processing may take 5-7 business days</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="mt-6 flex items-center justify-end space-x-4">
+                    <a href="{{ url_for('profile') }}"
+                       class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Keep Booking
+                    </a>
+                    <form method="POST" action="{{ url_for('cancellation_page', booking_id=booking.id) }}" class="inline">
+                        <button type="submit"
+                                class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                            Confirm Cancellation
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
