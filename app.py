@@ -62,6 +62,13 @@ class Booking(db.Model):
     hotel = db.relationship('Hotel', backref='bookings')
     room = db.relationship('Room', backref='bookings')
 
+class Currency(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(3), unique=True, nullable=False)
+    symbol = db.Column(db.String(5), nullable=False)
+    rate_to_gbp = db.Column(db.Float, nullable=False)  # Exchange rate relative to GBP
+    is_active = db.Column(db.Boolean, default=True)
+
 # Add this after your model definitions but before the routes
 
 CITY_DATA = {
@@ -165,11 +172,19 @@ def index():
     # Convert the dictionary to a list of cities with their data
     cities = [{'name': city, **data} for city, data in CITY_DATA.items()]
 
+    # Get selected currency
+    currency_code = request.args.get('currency', 'GBP')
+    currency = Currency.query.filter_by(code=currency_code, is_active=True).first() or \
+              Currency.query.filter_by(code='GBP').first()
+
+    # Add currency to template context
     return render_template('index.html',
                          cities=cities,
                          is_peak_season=is_peak_season,
                          hotels=hotels,
-                         CITY_DATA=CITY_DATA)
+                         CITY_DATA=CITY_DATA,
+                         currency=currency,
+                         currencies=Currency.query.filter_by(is_active=True).all())
 
 @app.route('/hotel/<int:hotel_id>')
 def hotel_details(hotel_id):
@@ -237,6 +252,11 @@ def profile():
 @login_required
 def booking(hotel_id):
     hotel = Hotel.query.get_or_404(hotel_id)
+    # Get selected currency
+    currency_code = request.args.get('currency', 'GBP')
+    currency = Currency.query.filter_by(code=currency_code, is_active=True).first() or \
+              Currency.query.filter_by(code='GBP').first()
+
     if request.method == 'POST':
         try:
             # Get form data
@@ -250,7 +270,8 @@ def booking(hotel_id):
 
             # Calculate total price
             days = (check_out - check_in).days
-            total_price = room.price * days
+            # Convert price back to GBP for storage
+            total_price = (room.price * days) / currency.rate_to_gbp
 
             # Create booking
             booking = Booking(
@@ -289,7 +310,9 @@ def booking(hotel_id):
                          selected_room=selected_room,
                          check_in=request.args.get('check_in'),
                          check_out=request.args.get('check_out'),
-                         guests=request.args.get('guests'))
+                         guests=request.args.get('guests'),
+                         currency=currency,
+                         currencies=Currency.query.filter_by(is_active=True).all())
 
 @app.route('/booking/confirmation/<int:booking_id>')
 @login_required
@@ -571,6 +594,36 @@ def admin_toggle_user_role(user_id):
     flash(f'User role updated successfully. {user.username} is now {"an admin" if user.is_admin else "a regular user"}.')
     return redirect(url_for('admin_users'))
 
+@app.route('/admin/currencies')
+@login_required
+def admin_currencies():
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('index'))
+
+    currencies = Currency.query.all()
+    return render_template('admin/currencies.html', currencies=currencies)
+
+@app.route('/admin/currencies/edit/<int:currency_id>', methods=['GET', 'POST'])
+@login_required
+def admin_edit_currency(currency_id):
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('index'))
+
+    currency = Currency.query.get_or_404(currency_id)
+
+    if request.method == 'POST':
+        currency.symbol = request.form.get('symbol')
+        currency.rate_to_gbp = float(request.form.get('rate_to_gbp'))
+        currency.is_active = 'is_active' in request.form
+
+        db.session.commit()
+        flash('Currency updated successfully')
+        return redirect(url_for('admin_currencies'))
+
+    return render_template('admin/edit_currency.html', currency=currency)
+
 # Error handlers
 @app.errorhandler(404)
 def page_not_found(e):
@@ -826,6 +879,20 @@ def init_example_data():
                     available=True
                 )
                 db.session.add(room)
+
+    db.session.commit()
+
+    # Initialize default currencies
+    currencies_data = [
+        {'code': 'GBP', 'symbol': '£', 'rate_to_gbp': 1.0},
+        {'code': 'EUR', 'symbol': '€', 'rate_to_gbp': 1.17},
+        {'code': 'USD', 'symbol': '$', 'rate_to_gbp': 1.27}
+    ]
+
+    for currency_data in currencies_data:
+        if not Currency.query.filter_by(code=currency_data['code']).first():
+            currency = Currency(**currency_data)
+            db.session.add(currency)
 
     db.session.commit()
 

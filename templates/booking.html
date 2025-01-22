@@ -36,10 +36,24 @@
                         {% if room.available %}
                             <option value="{{ room.id }}"
                                     {% if selected_room and selected_room.id == room.id %}selected{% endif %}
-                                    data-price="{{ room.price }}">
-                                {{ room.type }} - £{{ "%.2f"|format(room.price) }} per night
+                                    data-price="{{ room.price * currency.rate_to_gbp }}">
+                                {{ room.type }} - {{ currency.symbol }}{{ "%.2f"|format(room.price * currency.rate_to_gbp) }} per night
                             </option>
                         {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Currency Selection -->
+            <div>
+                <label for="currency" class="block text-sm font-medium text-gray-700">Currency</label>
+                <select id="currency" name="currency"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        onchange="window.location.href='{{ url_for('booking', hotel_id=hotel.id) }}?currency=' + this.value">
+                    {% for curr in currencies %}
+                    <option value="{{ curr.code }}" {% if curr.code == currency.code %}selected{% endif %}>
+                        {{ curr.code }} ({{ curr.symbol }})
+                    </option>
                     {% endfor %}
                 </select>
             </div>
@@ -69,7 +83,7 @@
                 <div class="mt-4 space-y-2">
                     <div class="flex justify-between">
                         <span class="text-gray-600">Room Rate per Night</span>
-                        <span id="roomRate" class="font-semibold">$0.00</span>
+                        <span id="roomRate" class="font-semibold">{{ currency.symbol }}0.00</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-600">Number of Nights</span>
@@ -77,12 +91,12 @@
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-600">Taxes & Fees (10%)</span>
-                        <span id="taxesAndFees" class="font-semibold">$0.00</span>
+                        <span id="taxesAndFees" class="font-semibold">{{ currency.symbol }}0.00</span>
                     </div>
                     <div class="border-t pt-2 mt-2">
                         <div class="flex justify-between">
                             <span class="text-lg font-bold">Total</span>
-                            <span id="totalPrice" class="text-lg font-bold">$0.00</span>
+                            <span id="totalPrice" class="text-lg font-bold">{{ currency.symbol }}0.00</span>
                         </div>
                     </div>
                 </div>
@@ -130,32 +144,31 @@
         checkOutInput.min = tomorrowStr;
         checkOutInput.value = tomorrowStr;
 
-        function updatePriceSummary() {
+        function updatePrices() {
+            const selectedOption = roomSelect.options[roomSelect.selectedIndex];
+            const pricePerNight = parseFloat(selectedOption.dataset.price);
             const checkIn = new Date(checkInInput.value);
             const checkOut = new Date(checkOutInput.value);
-            const selectedRoom = roomSelect.options[roomSelect.selectedIndex];
+            const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
 
-            if (checkIn && checkOut && selectedRoom) {
-                const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
-                const ratePerNight = parseFloat(selectedRoom.dataset.price);
-                const subtotal = nights * ratePerNight;
-                const taxesAndFees = subtotal * 0.1;
-                const total = subtotal + taxesAndFees;
+            const subtotal = pricePerNight * nights;
+            const taxes = subtotal * 0.1; // 10% tax
+            const total = subtotal + taxes;
 
-                document.getElementById('roomRate').textContent = `$${ratePerNight.toFixed(2)}`;
-                document.getElementById('numberOfNights').textContent = nights;
-                document.getElementById('taxesAndFees').textContent = `$${taxesAndFees.toFixed(2)}`;
-                document.getElementById('totalPrice').textContent = `$${total.toFixed(2)}`;
-            }
+            const currencySymbol = '{{ currency.symbol }}';
+            document.getElementById('roomRate').textContent = `${currencySymbol}${pricePerNight.toFixed(2)}`;
+            document.getElementById('numberOfNights').textContent = nights;
+            document.getElementById('taxesAndFees').textContent = `${currencySymbol}${taxes.toFixed(2)}`;
+            document.getElementById('totalPrice').textContent = `${currencySymbol}${total.toFixed(2)}`;
         }
 
         // Update price when inputs change
-        checkInInput.addEventListener('change', updatePriceSummary);
-        checkOutInput.addEventListener('change', updatePriceSummary);
-        roomSelect.addEventListener('change', updatePriceSummary);
+        checkInInput.addEventListener('change', updatePrices);
+        checkOutInput.addEventListener('change', updatePrices);
+        roomSelect.addEventListener('change', updatePrices);
 
         // Initial price calculation
-        updatePriceSummary();
+        updatePrices();
 
         // Validate dates before form submission
         form.addEventListener('submit', function(e) {
