@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}{% if city %}Edit{% else %}Add{% endif %} City{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <!-- Header -->
+    <div class="md:flex md:items-center md:justify-between mb-6">
+        <div class="flex-1 min-w-0">
+            <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
+                {% if city %}Edit City: {{ city.name }}{% else %}Add New City{% endif %}
+            </h2>
+        </div>
+        <div class="mt-4 flex md:mt-0 md:ml-4">
+            <a href="{{ url_for('admin_cities') }}"
+               class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                Back to Cities
+            </a>
+        </div>
+    </div>
+
+    <!-- Edit Form -->
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+        <form method="POST" class="space-y-6 p-6">
+            <div class="space-y-4">
+                <div>
+                    <label for="name" class="block text-sm font-medium text-gray-700">City Name</label>
+                    <input type="text" name="name" id="name" required value="{{ city.name if city else '' }}"
+                           {% if not city %}list="existing_cities"{% endif %}
+                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    {% if not city %}
+                    <datalist id="existing_cities">
+                        {% for city_name, data in CITY_DATA.items() %}
+                            <option value="{{ city_name }}">
+                        {% endfor %}
+                    </datalist>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="capacity" class="block text-sm font-medium text-gray-700">Capacity</label>
+                    <input type="number" name="capacity" id="capacity" required value="{{ city.capacity if city else '' }}"
+                           min="0"
+                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+
+                <div>
+                    <label for="peak_rate" class="block text-sm font-medium text-gray-700">Peak Rate (£)</label>
+                    <input type="number" name="peak_rate" id="peak_rate" required value="{{ "%.2f"|format(city.peak_rate) if city else '' }}"
+                           step="0.01" min="0"
+                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+
+                <div>
+                    <label for="off_peak_rate" class="block text-sm font-medium text-gray-700">Off-Peak Rate (£)</label>
+                    <input type="number" name="off_peak_rate" id="off_peak_rate" required value="{{ "%.2f"|format(city.off_peak_rate) if city else '' }}"
+                           step="0.01" min="0"
+                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+            </div>
+
+            <div class="flex justify-end">
+                <button type="submit"
+                        class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    {% if city %}Update{% else %}Add{% endif %} City
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const cityData = {
+            {% for city_name, data in CITY_DATA.items() %}
+                "{{ city_name }}": {
+                    capacity: {{ data.capacity }},
+                    peak_rate: {{ data.peak_rate }},
+                    off_peak_rate: {{ data.off_peak_rate }}
+                },
+            {% endfor %}
+        };
+
+        const nameInput = document.getElementById('name');
+        const capacityInput = document.getElementById('capacity');
+        const peakRateInput = document.getElementById('peak_rate');
+        const offPeakRateInput = document.getElementById('off_peak_rate');
+
+        nameInput.addEventListener('change', function() {
+            const selectedCity = cityData[this.value];
+            if (selectedCity) {
+                capacityInput.value = selectedCity.capacity;
+                peakRateInput.value = selectedCity.peak_rate.toFixed(2);
+                offPeakRateInput.value = selectedCity.off_peak_rate.toFixed(2);
+            }
+        });
+    });
+</script>
+{% endblock %}

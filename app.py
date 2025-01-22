@@ -69,6 +69,13 @@ class Currency(db.Model):
     rate_to_gbp = db.Column(db.Float, nullable=False)  # Exchange rate relative to GBP
     is_active = db.Column(db.Boolean, default=True)
 
+class City(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    capacity = db.Column(db.Integer, nullable=False)
+    peak_rate = db.Column(db.Float, nullable=False)
+    off_peak_rate = db.Column(db.Float, nullable=False)
+
 # Add this after your model definitions but before the routes
 
 CITY_DATA = {
@@ -169,8 +176,14 @@ def index():
     current_month = datetime.now().month
     is_peak_season = current_month in [4, 5, 6, 7, 8, 11, 12]
 
-    # Convert the dictionary to a list of cities with their data
-    cities = [{'name': city, **data} for city, data in CITY_DATA.items()]
+    # Get cities from database instead of CITY_DATA
+    cities = City.query.all()
+    cities_data = [{
+        'name': city.name,
+        'capacity': city.capacity,
+        'peak_rate': city.peak_rate,
+        'off_peak_rate': city.off_peak_rate
+    } for city in cities]
 
     # Get selected currency
     currency_code = request.args.get('currency', 'GBP')
@@ -179,7 +192,7 @@ def index():
 
     # Add currency to template context
     return render_template('index.html',
-                         cities=cities,
+                         cities=cities_data,
                          is_peak_season=is_peak_season,
                          hotels=hotels,
                          CITY_DATA=CITY_DATA,
@@ -541,18 +554,29 @@ def admin_edit_hotel(hotel_id):
         room_prices = request.form.getlist('room_price[]')
         room_capacities = request.form.getlist('room_capacity[]')
 
+        # Get base rate for the city
+        base_rate = CITY_DATA[hotel.city]['peak_rate']
+
         for i in range(len(room_ids)):
             room = Room.query.get(int(room_ids[i]))
             if room:
                 room.type = room_types[i]
-                room.price = float(room_prices[i])
+                # Calculate price based on room type
+                if 'Standard' in room_types[i] or 'Classic' in room_types[i] or 'Business' in room_types[i]:
+                    room.price = base_rate
+                elif 'Double' in room_types[i] or 'Deluxe' in room_types[i] or 'View' in room_types[i]:
+                    room.price = base_rate * 1.2
+                elif 'Suite' in room_types[i] or 'Premium' in room_types[i] or 'Royal' in room_types[i] or 'Executive' in room_types[i] or 'Presidential' in room_types[i]:
+                    room.price = base_rate * 1.5
+                else:
+                    room.price = base_rate
                 room.capacity = int(room_capacities[i])
 
         db.session.commit()
         flash('Hotel updated successfully')
         return redirect(url_for('admin_hotels'))
 
-    return render_template('admin/edit_hotel.html', hotel=hotel)
+    return render_template('admin/edit_hotel.html', hotel=hotel, CITY_DATA=CITY_DATA)
 
 @app.route('/admin/users/<int:user_id>')
 @login_required
@@ -642,6 +666,71 @@ def admin_edit_currency(currency_id):
 
     return render_template('admin/edit_currency.html', currency=currency)
 
+@app.route('/admin/cities')
+@login_required
+def admin_cities():
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('index'))
+
+    cities = City.query.all()
+    return render_template('admin/cities.html', cities=cities)
+
+@app.route('/admin/cities/add', methods=['GET', 'POST'])
+@login_required
+def admin_add_city():
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        city = City(
+            name=request.form.get('name'),
+            capacity=int(request.form.get('capacity')),
+            peak_rate=float(request.form.get('peak_rate')),
+            off_peak_rate=float(request.form.get('off_peak_rate'))
+        )
+        db.session.add(city)
+        db.session.commit()
+        flash('City added successfully')
+        return redirect(url_for('admin_cities'))
+
+    return render_template('admin/edit_city.html', city=None, CITY_DATA=CITY_DATA)
+
+@app.route('/admin/cities/edit/<int:city_id>', methods=['GET', 'POST'])
+@login_required
+def admin_edit_city(city_id):
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('index'))
+
+    city = City.query.get_or_404(city_id)
+
+    if request.method == 'POST':
+        city.name = request.form.get('name')
+        city.capacity = int(request.form.get('capacity'))
+        city.peak_rate = float(request.form.get('peak_rate'))
+        city.off_peak_rate = float(request.form.get('off_peak_rate'))
+
+        db.session.commit()
+        flash('City updated successfully')
+        return redirect(url_for('admin_cities'))
+
+    return render_template('admin/edit_city.html', city=city, CITY_DATA=CITY_DATA)
+
+@app.route('/admin/cities/delete/<int:city_id>', methods=['POST'])
+@login_required
+def admin_delete_city(city_id):
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('index'))
+
+    city = City.query.get_or_404(city_id)
+    db.session.delete(city)
+    db.session.commit()
+    flash('City deleted successfully')
+    return redirect(url_for('admin_cities'))
+
 # Error handlers
 @app.errorhandler(404)
 def page_not_found(e):
@@ -652,6 +741,19 @@ def server_error(e):
     return render_template('500.html'), 500
 
 def init_example_data():
+    # Initialize cities from CITY_DATA
+    for city_name, data in CITY_DATA.items():
+        if not City.query.filter_by(name=city_name).first():
+            city = City(
+                name=city_name,
+                capacity=data['capacity'],
+                peak_rate=data['peak_rate'],
+                off_peak_rate=data['off_peak_rate']
+            )
+            db.session.add(city)
+
+    db.session.commit()
+
     # Create admin user
     admin = User.query.filter_by(email='admin@wh.com.uk').first()
     if not admin:
