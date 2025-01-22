@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Edit User{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <!-- Header -->
+    <div class="md:flex md:items-center md:justify-between mb-6">
+        <div class="flex-1 min-w-0">
+            <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
+                Edit User: {{ user.username }}
+            </h2>
+        </div>
+        <div class="mt-4 flex md:mt-0 md:ml-4">
+            <a href="{{ url_for('admin_user_details', user_id=user.id) }}"
+               class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                Back to Details
+            </a>
+        </div>
+    </div>
+
+    <!-- Edit User Form -->
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+        <form method="POST" class="space-y-6 p-6">
+            <div class="space-y-4">
+                <div>
+                    <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
+                    <input type="text" name="username" id="username" required value="{{ user.username }}"
+                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" name="email" id="email" required value="{{ user.email }}"
+                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700">New Password (leave blank to keep current)</label>
+                    <input type="password" name="password" id="password"
+                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+
+                {% if current_user.id != user.id %}
+                <div class="flex items-center">
+                    <input type="checkbox" name="is_admin" id="is_admin" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                           {% if user.is_admin %}checked{% endif %}>
+                    <label for="is_admin" class="ml-2 block text-sm text-gray-900">
+                        Admin privileges
+                    </label>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="flex justify-end">
+                <button type="submit"
+                        class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Update User
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

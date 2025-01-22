@@ -26,6 +26,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(128))
     bookings = db.relationship('Booking', backref='user', lazy=True)
+    is_admin = db.Column(db.Boolean, default=False)
 
 class Hotel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -307,6 +308,200 @@ def search():
                          room_types=room_types,
                          amenities=['WiFi', 'Pool', 'Gym', 'Restaurant', 'Parking'])
 
+# Admin routes
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+        user = User.query.filter_by(email=email).first()
+
+        if user and check_password_hash(user.password_hash, password) and user.is_admin:
+            login_user(user)
+            return redirect(url_for('admin_dashboard'))
+
+        flash('Invalid credentials or insufficient permissions')
+        return redirect(url_for('admin_login'))
+
+    return render_template('admin/login.html')
+
+@app.route('/admin/dashboard')
+@login_required
+def admin_dashboard():
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('index'))
+
+    # Get statistics for dashboard
+    total_bookings = Booking.query.count()
+    total_users = User.query.count()
+    total_hotels = Hotel.query.count()
+    recent_bookings = Booking.query.order_by(Booking.created_at.desc()).limit(5).all()
+
+    return render_template('admin/dashboard.html',
+                         total_bookings=total_bookings,
+                         total_users=total_users,
+                         total_hotels=total_hotels,
+                         recent_bookings=recent_bookings)
+
+@app.route('/admin/hotels')
+@login_required
+def admin_hotels():
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('index'))
+
+    hotels = Hotel.query.all()
+    return render_template('admin/hotels.html', hotels=hotels)
+
+@app.route('/admin/users')
+@login_required
+def admin_users():
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('index'))
+
+    users = User.query.all()
+    return render_template('admin/users.html', users=users)
+
+@app.route('/admin/hotels/add', methods=['GET', 'POST'])
+@login_required
+def admin_add_hotel():
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        try:
+            hotel = Hotel(
+                name=request.form.get('name'),
+                city=request.form.get('city'),
+                address=request.form.get('address'),
+                description=request.form.get('description'),
+                image_url=request.form.get('image_url')
+            )
+            db.session.add(hotel)
+            db.session.commit()
+
+            # Add rooms
+            room_types = request.form.getlist('room_type[]')
+            room_prices = request.form.getlist('room_price[]')
+            room_capacities = request.form.getlist('room_capacity[]')
+
+            for i in range(len(room_types)):
+                if room_types[i].strip():  # Only add if room type is not empty
+                    room = Room(
+                        hotel_id=hotel.id,
+                        type=room_types[i],
+                        price=float(room_prices[i]),
+                        capacity=int(room_capacities[i]),
+                        available=True
+                    )
+                    db.session.add(room)
+
+            db.session.commit()
+            flash('Hotel added successfully')
+            return redirect(url_for('admin_hotels'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error adding hotel: {str(e)}')
+            return redirect(url_for('admin_add_hotel'))
+
+    return render_template('admin/add_hotel.html')
+
+@app.route('/admin/hotels/edit/<int:hotel_id>', methods=['GET', 'POST'])
+@login_required
+def admin_edit_hotel(hotel_id):
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('index'))
+
+    hotel = Hotel.query.get_or_404(hotel_id)
+
+    if request.method == 'POST':
+        hotel.name = request.form.get('name')
+        hotel.city = request.form.get('city')
+        hotel.address = request.form.get('address')
+        hotel.description = request.form.get('description')
+        hotel.image_url = request.form.get('image_url')
+
+        # Update existing rooms
+        room_ids = request.form.getlist('room_id[]')
+        room_types = request.form.getlist('room_type[]')
+        room_prices = request.form.getlist('room_price[]')
+        room_capacities = request.form.getlist('room_capacity[]')
+
+        for i in range(len(room_ids)):
+            room = Room.query.get(int(room_ids[i]))
+            if room:
+                room.type = room_types[i]
+                room.price = float(room_prices[i])
+                room.capacity = int(room_capacities[i])
+
+        db.session.commit()
+        flash('Hotel updated successfully')
+        return redirect(url_for('admin_hotels'))
+
+    return render_template('admin/edit_hotel.html', hotel=hotel)
+
+@app.route('/admin/users/<int:user_id>')
+@login_required
+def admin_user_details(user_id):
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('index'))
+
+    user = User.query.get_or_404(user_id)
+    return render_template('admin/user_details.html', user=user)
+
+@app.route('/admin/users/edit/<int:user_id>', methods=['GET', 'POST'])
+@login_required
+def admin_edit_user(user_id):
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('index'))
+
+    user = User.query.get_or_404(user_id)
+
+    if request.method == 'POST':
+        user.username = request.form.get('username')
+        user.email = request.form.get('email')
+
+        # Only update password if provided
+        new_password = request.form.get('password')
+        if new_password:
+            user.password_hash = generate_password_hash(new_password)
+
+        # Only admin can change admin status, and can't remove their own admin status
+        if current_user.id != user.id:  # Can't change own admin status
+            user.is_admin = 'is_admin' in request.form
+
+        db.session.commit()
+        flash('User updated successfully')
+        return redirect(url_for('admin_user_details', user_id=user.id))
+
+    return render_template('admin/edit_user.html', user=user)
+
+@app.route('/admin/users/<int:user_id>/toggle-role', methods=['POST'])
+@login_required
+def admin_toggle_user_role(user_id):
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('index'))
+
+    user = User.query.get_or_404(user_id)
+
+    # Prevent admin from removing their own admin status
+    if current_user.id == user.id:
+        flash('You cannot change your own admin status')
+        return redirect(url_for('admin_users'))
+
+    user.is_admin = not user.is_admin
+    db.session.commit()
+
+    flash(f'User role updated successfully. {user.username} is now {"an admin" if user.is_admin else "a regular user"}.')
+    return redirect(url_for('admin_users'))
+
 # Error handlers
 @app.errorhandler(404)
 def page_not_found(e):
@@ -317,6 +512,18 @@ def server_error(e):
     return render_template('500.html'), 500
 
 def init_example_data():
+    # Create admin user
+    admin = User.query.filter_by(email='admin@wh.com.uk').first()
+    if not admin:
+        admin = User(
+            username='Admin',
+            email='admin@wh.com.uk',
+            password_hash=generate_password_hash('admin@123!'),
+            is_admin=True
+        )
+        db.session.add(admin)
+        db.session.commit()
+
     # Example Hotels with their details
     hotels_data = [
         {

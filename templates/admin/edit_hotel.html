@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Hotel{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <!-- Header -->
+    <div class="md:flex md:items-center md:justify-between mb-6">
+        <div class="flex-1 min-w-0">
+            <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
+                Edit Hotel: {{ hotel.name }}
+            </h2>
+        </div>
+        <div class="mt-4 flex md:mt-0 md:ml-4">
+            <a href="{{ url_for('admin_hotels') }}"
+               class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                Back to Hotels
+            </a>
+        </div>
+    </div>
+
+    <!-- Edit Hotel Form -->
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+        <form method="POST" class="space-y-6 p-6">
+            <!-- Hotel Details -->
+            <div class="space-y-4">
+                <div>
+                    <label for="name" class="block text-sm font-medium text-gray-700">Hotel Name</label>
+                    <input type="text" name="name" id="name" required value="{{ hotel.name }}"
+                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+
+                <div>
+                    <label for="city" class="block text-sm font-medium text-gray-700">City</label>
+                    <select name="city" id="city" required
+                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        {% for city in ['London', 'Manchester', 'Birmingham', 'Edinburgh', 'Glasgow', 'Liverpool', 'Leeds', 'Bristol', 'Cardiff'] %}
+                        <option value="{{ city }}" {% if city == hotel.city %}selected{% endif %}>{{ city }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label for="address" class="block text-sm font-medium text-gray-700">Address</label>
+                    <input type="text" name="address" id="address" required value="{{ hotel.address }}"
+                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+
+                <div>
+                    <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
+                    <textarea name="description" id="description" rows="4" required
+                              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">{{ hotel.description }}</textarea>
+                </div>
+
+                <div>
+                    <label for="image_url" class="block text-sm font-medium text-gray-700">Image URL</label>
+                    <input type="url" name="image_url" id="image_url" required value="{{ hotel.image_url }}"
+                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+            </div>
+
+            <!-- Room Details -->
+            <div class="space-y-4">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-lg font-medium text-gray-900">Rooms</h3>
+                    <button type="button" onclick="addRoomField()"
+                            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Add Room
+                    </button>
+                </div>
+
+                <div id="rooms-container">
+                    {% for room in hotel.rooms %}
+                    <div class="grid grid-cols-3 gap-4 p-4 border rounded-lg bg-gray-50">
+                        <input type="hidden" name="room_id[]" value="{{ room.id }}">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Room Type</label>
+                            <input type="text" name="room_type[]" required value="{{ room.type }}"
+                                   class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Price</label>
+                            <input type="number" name="room_price[]" required min="0" step="0.01" value="{{ room.price }}"
+                                   class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Capacity</label>
+                            <input type="number" name="room_capacity[]" required min="1" value="{{ room.capacity }}"
+                                   class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="flex justify-end">
+                <button type="submit"
+                        class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Update Hotel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function addRoomField() {
+    const container = document.getElementById('rooms-container');
+    const roomIndex = container.children.length;
+
+    const roomDiv = document.createElement('div');
+    roomDiv.className = 'grid grid-cols-3 gap-4 p-4 border rounded-lg bg-gray-50';
+    roomDiv.innerHTML = `
+        <input type="hidden" name="room_id[]" value="new">
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Room Type</label>
+            <input type="text" name="room_type[]" required
+                   class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Price</label>
+            <input type="number" name="room_price[]" required min="0" step="0.01"
+                   class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Capacity</label>
+            <input type="number" name="room_capacity[]" required min="1"
+                   class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+        </div>
+    `;
+
+    container.appendChild(roomDiv);
+}
+</script>
+{% endblock %}
