@@ -34,10 +34,18 @@
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     {% for room in hotel.rooms %}
                         {% if room.available %}
+                            {% set base_rate = CITY_DATA[hotel.city]['peak_rate'] if is_peak_season else CITY_DATA[hotel.city]['off_peak_rate'] %}
+                            {% if 'Standard' in room.type %}
+                                {% set room_price = base_rate %}
+                            {% elif 'Double' in room.type or 'Deluxe' in room.type %}
+                                {% set room_price = base_rate * 1.2 %}
+                            {% else %}
+                                {% set room_price = base_rate * 1.5 %}
+                            {% endif %}
                             <option value="{{ room.id }}"
                                     {% if selected_room and selected_room.id == room.id %}selected{% endif %}
-                                    data-price="{{ room.price * currency.rate_to_gbp }}">
-                                {{ room.type }} - {{ currency.symbol }}{{ "%.2f"|format(room.price * currency.rate_to_gbp) }} per night
+                                    data-price="{{ room_price * currency.rate_to_gbp }}">
+                                {{ room.type }} - {{ currency.symbol }}{{ "%.2f"|format(room_price * currency.rate_to_gbp) }} per night
                             </option>
                         {% endif %}
                     {% endfor %}

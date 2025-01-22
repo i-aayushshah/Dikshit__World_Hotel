@@ -95,20 +95,37 @@
                             </div>
                             <div class="mt-4 md:mt-0 text-right">
                                 {% set base_rate = CITY_DATA[hotel.city]['peak_rate'] if is_peak_season else CITY_DATA[hotel.city]['off_peak_rate'] %}
-                                {% if 'Standard' in room.type %}
+                                {% if 'Standard' in room.type or 'Classic' in room.type or 'Business' in room.type %}
                                     {% set room_price = base_rate %}
-                                {% elif 'Deluxe' in room.type or 'Double' in room.type %}
-                                    {% set room_price = base_rate * 1.3 %}
-                                {% else %}
+                                {% elif 'Double' in room.type or 'Deluxe' in room.type or 'View' in room.type %}
+                                    {% set room_price = base_rate * 1.2 %}
+                                {% elif 'Suite' in room.type or 'Premium' in room.type or 'Royal' in room.type or 'Executive' in room.type or 'Presidential' in room.type %}
                                     {% set room_price = base_rate * 1.5 %}
+                                {% else %}
+                                    {% set room_price = base_rate %}
                                 {% endif %}
-                                <p class="text-2xl font-bold text-gray-900">£{{ "%.2f"|format(room_price) }}</p>
+                                <p class="text-2xl font-bold text-gray-900">
+                                    £{{ "%.2f"|format(room_price) }}
+                                    <span class="text-sm font-normal text-gray-500">per night</span>
+                                </p>
+                                {% if 'Standard' in room.type or 'Classic' in room.type or 'Business' in room.type %}
+                                    <p class="text-sm text-gray-500">Base Rate</p>
+                                {% elif 'Double' in room.type or 'Deluxe' in room.type or 'View' in room.type %}
+                                    <p class="text-sm text-gray-500">Base Rate + 20%</p>
+                                {% elif 'Suite' in room.type or 'Premium' in room.type or 'Royal' in room.type or 'Executive' in room.type or 'Presidential' in room.type %}
+                                    <p class="text-sm text-gray-500">Base Rate + 50%</p>
+                                {% else %}
+                                    <p class="text-sm text-gray-500">Base Rate</p>
+                                {% endif %}
                                 <p class="text-sm text-gray-500">
                                     {% if is_peak_season %}
                                     <span class="text-red-600">Peak Season Rate</span>
                                     {% else %}
                                     <span class="text-green-600">Off-peak Rate</span>
                                     {% endif %}
+                                </p>
+                                <p class="text-sm text-gray-500 mt-1">
+                                    Base Rate: £{{ "%.2f"|format(base_rate) }}
                                 </p>
                                 {% if room.available %}
                                 <a href="{{ url_for('booking', hotel_id=hotel.id, room_id=room.id) }}"
@@ -127,29 +144,15 @@
                 </div>
             </div>
 
-            <div class="mt-4">
-                <h3 class="text-lg font-medium text-gray-900">Room Types & Rates</h3>
-                <div class="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {% for room in hotel.rooms %}
-                    <div class="relative flex items-center space-x-3 rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2 hover:border-gray-400">
-                        <div class="min-w-0 flex-1">
-                            <h4 class="text-lg font-semibold text-gray-900">{{ room.type }}</h4>
-                            <p class="text-lg font-bold text-gray-900">£{{ "%.2f"|format(room.price) }}</p>
-                            <p class="text-sm text-gray-500">Capacity: {{ room.capacity }} guests</p>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-                <div class="mt-4 text-sm text-gray-600">
-                    <p><strong>Room Type Pricing:</strong></p>
-                    <ul class="list-disc pl-5 mt-2">
-                        <li>Standard Rooms: Base rate</li>
-                        <li>Deluxe/Double Rooms: Base rate + 30%</li>
-                        <li>Suites/Premium Rooms: Base rate + 50%</li>
-                    </ul>
-                    <p class="mt-2"><strong>Peak Season:</strong> April–August, November-December</p>
-                    <p><strong>Off-peak Season:</strong> All other months</p>
-                </div>
+            <div class="mt-4 text-sm text-gray-600">
+                <p><strong>Room Type Pricing:</strong></p>
+                <ul class="list-disc pl-5 mt-2">
+                    <li>Standard/Classic/Business Rooms: Base rate</li>
+                    <li>Deluxe/Double/View Rooms: Base rate + 20%</li>
+                    <li>Suites/Premium/Royal/Executive/Presidential Rooms: Base rate + 50%</li>
+                </ul>
+                <p class="mt-2"><strong>Peak Season:</strong> April–August, November-December</p>
+                <p><strong>Off-peak Season:</strong> All other months</p>
             </div>
         </div>
 

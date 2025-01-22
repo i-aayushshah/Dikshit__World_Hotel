@@ -257,6 +257,13 @@ def booking(hotel_id):
     currency = Currency.query.filter_by(code=currency_code, is_active=True).first() or \
               Currency.query.filter_by(code='GBP').first()
 
+    # Get current month to determine if it's peak season
+    current_month = datetime.now().month
+    is_peak_season = current_month in [4, 5, 6, 7, 8, 11, 12]
+
+    # Get base rate from CITY_DATA
+    base_rate = CITY_DATA[hotel.city]['peak_rate'] if is_peak_season else CITY_DATA[hotel.city]['off_peak_rate']
+
     if request.method == 'POST':
         try:
             # Get form data
@@ -268,10 +275,19 @@ def booking(hotel_id):
             # Get room details
             room = Room.query.get_or_404(room_id)
 
+            # Calculate room price based on type
+            if 'Standard' in room.type or 'Classic' in room.type or 'Business' in room.type:
+                room_price = base_rate
+            elif 'Double' in room.type or 'Deluxe' in room.type or 'View' in room.type:
+                room_price = base_rate * 1.2
+            elif 'Suite' in room.type or 'Premium' in room.type or 'Royal' in room.type or 'Executive' in room.type or 'Presidential' in room.type:
+                room_price = base_rate * 1.5
+            else:
+                room_price = base_rate
+
             # Calculate total price
             days = (check_out - check_in).days
-            # Convert price back to GBP for storage
-            total_price = (room.price * days) / currency.rate_to_gbp
+            total_price = (room_price * days) / currency.rate_to_gbp
 
             # Create booking
             booking = Booking(
@@ -312,7 +328,9 @@ def booking(hotel_id):
                          check_out=request.args.get('check_out'),
                          guests=request.args.get('guests'),
                          currency=currency,
-                         currencies=Currency.query.filter_by(is_active=True).all())
+                         currencies=Currency.query.filter_by(is_active=True).all(),
+                         CITY_DATA=CITY_DATA,
+                         is_peak_season=is_peak_season)
 
 @app.route('/booking/confirmation/<int:booking_id>')
 @login_required
