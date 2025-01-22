@@ -54,6 +54,8 @@ class Booking(db.Model):
     check_out = db.Column(db.DateTime, nullable=False)
     guests = db.Column(db.Integer, nullable=False)
     total_price = db.Column(db.Float, nullable=False)
+    subtotal = db.Column(db.Float, nullable=False)
+    tax = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(20), default='confirmed')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -300,7 +302,9 @@ def booking(hotel_id):
 
             # Calculate total price
             days = (check_out - check_in).days
-            total_price = (room_price * days) / currency.rate_to_gbp
+            subtotal = (room_price * days) / currency.rate_to_gbp
+            tax = subtotal * 0.1
+            total_price = subtotal + tax
 
             # Create booking
             booking = Booking(
@@ -311,6 +315,8 @@ def booking(hotel_id):
                 check_out=check_out,
                 guests=guests,
                 total_price=total_price,
+                subtotal=subtotal,
+                tax=tax,
                 status='confirmed'
             )
 
